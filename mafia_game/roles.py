@@ -42,13 +42,16 @@ class BaseRole(object):
     def get_weight(self):
         raise NotImplementedError
 
+    def is_unique(self):
+        raise NotImplementedError
+
     def action(self):
         pass
 
 
 class VillagerRole(BaseRole):
     def get_name(self):
-        return "villager"
+        return RoleEnum.VILLAGER
 
     def get_team(self):
         return TeamEnum.CIVILIAN
@@ -59,10 +62,13 @@ class VillagerRole(BaseRole):
     def get_weight(self):
         return RoleWeight.VILLAGER.value
 
+    def is_unique(self):
+        return False
+
 
 class MafiaRole(BaseRole):
     def get_name(self):
-        return "mafia"
+        return RoleEnum.MAFIA
 
     def get_team(self):
         return TeamEnum.MAFIA
@@ -73,10 +79,13 @@ class MafiaRole(BaseRole):
     def get_weight(self):
         return RoleWeight.MAFIA.value
 
+    def is_unique(self):
+        return False
+
 
 class HealerRole(BaseRole):
     def get_name(self):
-        return "healer"
+        return RoleEnum.HEALER
 
     def get_team(self):
         return TeamEnum.CIVILIAN
@@ -87,10 +96,13 @@ class HealerRole(BaseRole):
     def get_weight(self):
         return RoleWeight.HEALER.value
 
+    def is_unique(self):
+        return True
+
 
 class DetectiveRole(BaseRole):
     def get_name(self):
-        return "detective"
+        return RoleEnum.DETECTIVE
 
     def get_team(self):
         return TeamEnum.CIVILIAN
@@ -100,3 +112,21 @@ class DetectiveRole(BaseRole):
 
     def get_weight(self):
         return RoleWeight.DETECTIVE.value
+
+    def is_unique(self):
+        return True
+
+
+class RoleFactory(object):
+    @staticmethod
+    def generate_role(role: RoleEnum):
+        if role is RoleEnum.VILLAGER:
+            return VillagerRole()
+        elif role is RoleEnum.MAFIA:
+            return MafiaRole()
+        elif role is RoleEnum.HEALER:
+            return HealerRole()
+        elif role is RoleEnum.DETECTIVE:
+            return DetectiveRole()
+        else:
+            raise ValueError("Unknown role to generate: {role_enum}".format(role_enum=role.name))

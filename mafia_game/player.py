@@ -1,4 +1,4 @@
-from .roles import VillagerRole, MafiaRole, HealerRole, DetectiveRole, RoleEnum
+from .roles import VillagerRole, MafiaRole, HealerRole, DetectiveRole, RoleEnum, RoleFactory
 
 from enum import Enum, unique, auto
 from collections import defaultdict
@@ -23,20 +23,12 @@ class BasePlayer:
         self.__killing_candidate = None
 
         self.role = None
+        self.__role_factory = RoleFactory()
         if role is not None:
             self.set_role(role)
 
     def set_role(self, role: RoleEnum):
-        if role is RoleEnum.VILLAGER:
-            self.role = VillagerRole()
-        elif role is RoleEnum.MAFIA:
-            self.role = MafiaRole()
-        elif role is RoleEnum.HEALER:
-            self.role = HealerRole()
-        elif role is RoleEnum.DETECTIVE:
-            self.role = DetectiveRole()
-        else:
-            raise ValueError("Unknown role to set {role_enum}".format(role_enum=role.name))
+        self.role = self.__role_factory.generate_role(role)
 
     def set_killing_candidate(self, player: __class__):
         self.__killing_candidate = player
