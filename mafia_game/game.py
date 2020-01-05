@@ -1,8 +1,14 @@
 from .roles import RoleEnum, RoleFactory, TeamEnum
 
-from enum import Enum, unique, auto
 from collections import defaultdict
-from random import shuffle
+from enum import auto, Enum, unique
+from queue import PriorityQueue
+from random import choices, shuffle
+from string import ascii_uppercase, digits
+
+import logging
+
+GAME_TOKEN_LENGTH = 4
 
 
 @unique
@@ -12,17 +18,26 @@ class GamePhase(Enum):
 
 
 class MafiaGame:
-    def __init__(self, mafia_coefficient: int = 4, banned_roles: list = None):
+    def __init__(self, mafia_coefficient: int = 4, banned_roles: list = None, logger=None, loglevel=logging.DEBUG):
+        self.__token = ''.join(choices(ascii_uppercase + digits, k=GAME_TOKEN_LENGTH))
         self.__players = defaultdict()
         self.__mafia_count = 0
         self.__phase = GamePhase.DAY
         self.__mafia_coefficient = max(mafia_coefficient, 1)
         self.__role_factory = RoleFactory()
 
+        self.__input_messages_queue = PriorityQueue()
+
         self.__available_roles = defaultdict(bool, ((role, True) for role in RoleEnum))
         if banned_roles is not None:
             for role in banned_roles:
                 self.__available_roles[role] = False
+
+        self.logger = logger
+        if self.logger is None:
+            self.logger = logging.getLogger("MafiaGame_{token}".format(token=self.__token))
+            self.logger.setLevel(loglevel)
+            formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
     def __calculate_max_mafia_count(self):
         return len(self.__players) // self.__mafia_coefficient
@@ -66,3 +81,9 @@ class MafiaGame:
         for player in self.__players.values():
             if len(roles) > 0:
                 player.set_role(roles.pop().get_name())
+
+    def get_token(self):
+        return self.__token
+
+    def run(self):
+        pass
