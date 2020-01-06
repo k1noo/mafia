@@ -1,7 +1,7 @@
-from .roles import VillagerRole, MafiaRole, HealerRole, DetectiveRole, RoleEnum, RoleFactory
+from .roles import RoleEnum, RoleFactory
 
-from enum import Enum, unique, auto
 from collections import defaultdict
+from enum import Enum, unique, auto
 
 
 @unique
