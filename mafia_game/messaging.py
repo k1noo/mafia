@@ -1,3 +1,4 @@
+from collections import defaultdict
 from enum import auto, Enum, unique
 
 
@@ -6,9 +7,18 @@ class MessagePrioritiesEnum(Enum):
     GAME_PLAY = 1
 
 
+@unique
+class MessageStatusEnum(Enum):
+    PENDING = auto()
+    OK = auto()
+    ERROR = auto()
+
+
 class BaseMessage(object):
     priority = 0
     game_token = None
+    data = None
+    status = MessageStatusEnum.PENDING
 
     def __cmp__(self, other):
         return self.priority < other.priority

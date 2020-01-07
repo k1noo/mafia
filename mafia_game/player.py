@@ -47,7 +47,7 @@ class BasePlayer:
 
 
 class OfflinePlayer(BasePlayer):
-    def __init__(self, player_id, role):
+    def __init__(self, player_id, role=None):
         super().__init__(player_id, role)
 
     def day_vote(self, player):

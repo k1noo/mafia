@@ -1,14 +1,17 @@
+from .messaging import CtrlMessage, GamePlayMessage, PlayerCtrlMessage, GameSessionCtrlMessage
+from .player import OfflinePlayer
 from .roles import RoleEnum, RoleFactory, TeamEnum
 
 from collections import defaultdict
 from enum import auto, Enum, unique
-from queue import PriorityQueue
+from queue import PriorityQueue, Empty
 from random import choices, shuffle
 from string import ascii_uppercase, digits
 
 import logging
 
 GAME_TOKEN_LENGTH = 4
+QUEUE_TIMEOUT = 1
 
 
 @unique
@@ -31,7 +34,8 @@ class NightPhaseStage(Enum):
 class MafiaGame:
     def __init__(self, mafia_coefficient: int = 4, banned_roles: list = None, logger=None, loglevel=logging.DEBUG):
         self.token = ''.join(choices(ascii_uppercase + digits, k=GAME_TOKEN_LENGTH))
-        self.input_messages_queue = PriorityQueue()
+        self.inbox_messages_queue = PriorityQueue()
+        self.is_running = False
 
         self.__players = defaultdict()
         self.__mafia_count = 0
@@ -116,7 +120,49 @@ class MafiaGame:
             self.__phase = GamePhase.DAY
         self.__logger.info("Game phase switched {prev}->{curr}".format(prev=current_role.name, curr=self.__phase.name))
 
+    def __register_player(self, player_id):
+        if not self.__players.get(player_id, False):
+            self.__players[player_id] = OfflinePlayer(player_id)
+            self.__logger.info("Player {player_id} has been registered in game {token}".format(
+                player_id=player_id, token=self.token))
+        else:
+            self.__logger.info("Player {player_id} is already registered in game {token}".format(
+                player_id=player_id, token=self.token))
+
+    def __remove_player(self, player_id):
+        if not self.__players.get(player_id, False):
+            self.__logger.info("Player {player_id} does not exist in game {token}".format(
+                player_id=player_id, token=self.token))
+        else:
+            self.__players.pop(player_id)
+            self.__logger.info("Player {player_id} has left the game {token}".format(
+                player_id=player_id, token=self.token))
+
+    def __process_ctrl_message(self, message: CtrlMessage):
+        if isinstance(message, PlayerCtrlMessage):
+            if message.type is PlayerCtrlMessage.Type.REGISTER:
+                self.__register_player(message.player_id)
+            elif message.type is PlayerCtrlMessage.Type.LEAVE:
+                self.__remove_player(message.player_id)
+            else:
+                self.__logger.info("Unknown PlayerCtrlMessage type received: {t}".format(t=message.type.name))
+        elif isinstance(message, GameSessionCtrlMessage):
+            pass
+        pass
+
+    def __process_game_play_message(self, message: GamePlayMessage):
+        pass
+
     def __game_loop(self):
+        while self.is_running:
+            try:
+                message = self.inbox_messages_queue.get(timeout=1)
+                if issubclass(message, CtrlMessage):
+                    self.__process_ctrl_message(message)
+                elif issubclass(message, GamePlayMessage):
+                    self.__process_game_play_message(message)
+            except Empty:
+                continue
         pass
 
     def run(self):
