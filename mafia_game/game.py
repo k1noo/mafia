@@ -1,16 +1,16 @@
 from .messaging import CtrlMessage, GamePlayMessage, PlayerCtrlMessage, GameSessionCtrlMessage
 from .player import OfflinePlayer
 from .roles import RoleEnum, RoleFactory, TeamEnum
+from .utils import generate_default_logger, generate_token
 
 from collections import defaultdict
 from enum import auto, Enum, unique
 from queue import PriorityQueue, Empty
-from random import choices, shuffle
-from string import ascii_uppercase, digits
+from random import shuffle
 
 import logging
 
-GAME_TOKEN_LENGTH = 4
+
 QUEUE_TIMEOUT = 1
 
 
@@ -31,15 +31,22 @@ class NightPhaseStage(Enum):
     MAFIA = auto()
 
 
+class GameResult(Enum):
+    CIVILIANS_VICTORY = auto()
+    MAFIA_VICTORY = auto()
+    UNKNOWN = auto()
+
+
 class MafiaGame:
     def __init__(self, mafia_coefficient: int = 4, banned_roles: list = None, logger=None, loglevel=logging.DEBUG):
-        self.token = ''.join(choices(ascii_uppercase + digits, k=GAME_TOKEN_LENGTH))
+        self.token = generate_token()
         self.inbox_messages_queue = PriorityQueue()
         self.is_running = False
 
         self.__players = defaultdict()
         self.__mafia_count = 0
         self.__phase = GamePhase.DAY
+        self.__game_result = GameResult.UNKNOWN
         self.__mafia_coefficient = max(mafia_coefficient, 1)
         self.__role_factory = RoleFactory()
 
@@ -50,12 +57,7 @@ class MafiaGame:
 
         self.__logger = logger
         if self.__logger is None:
-            self.__logger = logging.getLogger("MafiaGame_{token}".format(token=self.token))
-            self.__logger.setLevel(loglevel)
-            formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-            ch = logging.StreamHandler()
-            ch.setFormatter(formatter)
-            self.__logger.addHandler(ch)
+            self.__logger = generate_default_logger(name=f'MafiaGame_{self.token}', loglevel=loglevel)
 
         self.__logger.info("Created game session `{token}`. Mafias count = N // k, where k is {k}."
                            " Available roles: {roles}"
@@ -113,12 +115,12 @@ class MafiaGame:
                 player.set_role(roles.pop().get_name())
 
     def __switch_phase(self):
-        current_role = self.__phase
+        prev_phase = self.__phase
         if self.__phase is GamePhase.DAY:
             self.__phase = GamePhase.NIGHT
         else:
             self.__phase = GamePhase.DAY
-        self.__logger.info("Game phase switched {prev}->{curr}".format(prev=current_role.name, curr=self.__phase.name))
+        self.__logger.info("Game phase switched {prev}->{curr}".format(prev=prev_phase.name, curr=self.__phase.name))
 
     def __register_player(self, player_id):
         if not self.__players.get(player_id, False):
@@ -152,6 +154,17 @@ class MafiaGame:
 
     def __process_game_play_message(self, message: GamePlayMessage):
         pass
+
+    def __update_game_status(self):
+        if self.is_running:
+            players_balance = 0
+            for player in self.__players.items():
+                players_balance += 1 if player.role.get_team() == TeamEnum.CIVILIAN else -1
+            if self.__phase == GamePhase.NIGHT:
+                players_balance -= 1
+            if players_balance <= 0:
+                self.__game_result = GameResult.MAFIA_VICTORY
+                self.is_running = False
 
     def __game_loop(self):
         while self.is_running:

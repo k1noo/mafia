@@ -48,6 +48,9 @@ class BaseRole(object):
     def action(self):
         pass
 
+    def __str__(self):
+        return self.get_name().name
+
 
 class VillagerRole(BaseRole):
     def get_name(self):
